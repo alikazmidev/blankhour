@@ -7,8 +7,8 @@ async function returnToNewTab(showNotice = true) {
 }
 (async()=>{
   try {
-    const state=await Momentum.load();
-    Momentum.applyTheme(state.settings);
+    const state=await BlankhourStore.load();
+    BlankhourStore.applyTheme(state.settings);
     document.getElementById('motive').textContent=(state.settings.focusReason||'').trim() || 'I want to protect my time for the things that matter.';
     const context=await chrome.runtime.sendMessage({type:'GET_BLOCK_CONTEXT'}).catch(()=>null);
     if(context?.domain)document.getElementById('blocked-domain').textContent=context.domain.toUpperCase()+' · PAUSED FOR NOW';
@@ -26,6 +26,6 @@ document.getElementById('back-to-tab').addEventListener('click',async()=>{
 document.getElementById('disable').addEventListener('click',async()=>{
   const button=document.getElementById('disable');button.disabled=true;
   statusEl.textContent='Ending Focus Mode…';
-  try {await Momentum.setFocusMode(false);await returnToNewTab(false)}
+  try {await BlankhourStore.setFocusMode(false);await returnToNewTab(false)}
   catch(error){statusEl.textContent='Could not end Focus Mode: '+error.message;button.disabled=false}
 });

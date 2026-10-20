@@ -1,5 +1,5 @@
-/* Momentum's shared, dependency-free data layer. Everything stays on your device. */
-const Momentum = (() => {
+/* blankhour shared, dependency-free data layer. Preserve legacy storage keys for compatibility. */
+const BlankhourStore = (() => {
   const KEY = 'momentum_state_v1';
   const DAY_MS = 86400000;
   const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -11,7 +11,7 @@ const Momentum = (() => {
     'A little effort, repeated, changes the shape of a life.',
     'You do not need a perfect day to make real progress.',
     'The quiet work is often the work that matters.',
-    'Momentum begins with the next small action.',
+    'One focused hour begins with the next small action.',
     'Show up for the person you are becoming.',
     'Progress is a direction, not a competition.',
     'Keep promises to yourself, one day at a time.',

@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Zenith - Goals & Focus",
-  "short_name": "Zenith",
-  "description": "A calm new tab for goals, focus sessions, distraction blocking and daily progress.",
-  "version": "0.1.0",
-  "version_name": "0.1.0 Beta",
+  "name": "blankhour. | Goals & Focus",
+  "short_name": "blankhour",
+  "description": "A minimal new tab for focused work, daily habits and visible progress.",
+  "version": "0.2.0",
   "minimum_chrome_version": "120",
   "permissions": [
     "storage",
@@ -15,7 +14,7 @@
     "webNavigation"
   ],
   "action": {
-    "default_title": "Open Zenith",
+    "default_title": "Open blankhour.",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -52,5 +51,6 @@
         "https://*/*"
       ]
     }
-  ]
+  ],
+  "version_name": "0.2.0 Beta"
 }

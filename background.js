@@ -1,4 +1,4 @@
-/* Zenith Focus Mode. DNR rules are persistent in Chrome even when this service worker sleeps. */
+/* blankhour Focus Mode. DNR rules are persistent in Chrome even when this service worker sleeps. */
 importScripts('store.js');
 const ALARM = 'momentum-finish';
 const RULE_FROM = 850000;
@@ -24,24 +24,24 @@ function matchesDomain(url, domains) {
 // DNR must redirect to a real extension resource first. That page is now a
 // short-lived hand-off, not the final blocked screen. Opening a *fresh* native
 // New Tab avoids Chrome's known tabs.update(chrome://newtab/) override failure.
-const NOTICE_PREFIX = 'zenith_focus_notice_';
-const WORKSPACE_PREFIX = 'zenith_workspace_view_';
+const NOTICE_PREFIX = 'blankhour_focus_notice_';
+const WORKSPACE_PREFIX = 'blankhour_workspace_view_';
 const workspaceFallback = new Map();
 async function claimWorkspaceView(tabId){
   if(!Number.isInteger(tabId))return null;
   const key=WORKSPACE_PREFIX+tabId;
   let view=workspaceFallback.get(tabId)||null;
-  try {const value=await chrome.storage.session.get(key);view=value[key]?.view||view;if(view)await chrome.storage.session.remove(key);}catch(error){console.warn('Could not claim Zenith workspace:',error);}
+  try {const value=await chrome.storage.session.get(key);view=value[key]?.view||view;if(view)await chrome.storage.session.remove(key);}catch(error){console.warn('Could not claim blankhour workspace:',error);}
   workspaceFallback.delete(tabId);
   return ['dashboard','focus','home','goals','insights','settings'].includes(view)?view:null;
 }
 async function openWorkspaceView(view){
-  if(!['dashboard','focus','home','goals','insights','settings'].includes(view))throw Error('Unknown Zenith workspace.');
+  if(!['dashboard','focus','home','goals','insights','settings'].includes(view))throw Error('Unknown blankhour workspace.');
   const tab=await chrome.tabs.create({url:'chrome://newtab/',active:true});
   const key=WORKSPACE_PREFIX+tab.id;
   workspaceFallback.set(tab.id,view);
   try{await chrome.storage.session.set({[key]:{view,at:Date.now()}});}catch(error){console.warn('Unable to persist workspace route:',error)}
-  chrome.runtime.sendMessage({type:'ZENITH_VIEW_READY',tabId:tab.id}).catch(()=>{});
+  chrome.runtime.sendMessage({type:'BLANKHOUR_VIEW_READY',tabId:tab.id}).catch(()=>{});
   return {ok:true,tabId:tab.id};
 }
 
@@ -74,7 +74,7 @@ async function replaceOpenBlockedTabs(domains) {
       const host = new URL(tab.url).hostname.toLowerCase();
       const domain = domains.find(d => host === d || host.endsWith('.' + d)) || '';
       return openFocusNewTab(tab, domain).catch(error => {
-        console.warn('Zenith: could not replace a blocked tab', tab.id, error);
+        console.warn('blankhour: could not replace a blocked tab', tab.id, error);
       });
     }));
 }
@@ -102,19 +102,19 @@ async function syncBlocking(state) {
 }
 
 async function ensureTimerAndRules() {
-  const state = await Momentum.load();
+  const state = await BlankhourStore.load();
   const previousPhase = state.timer.phase;
   const previousStatus = state.timer.status;
-  const finished = Momentum.finishIfDue(state);
+  const finished = BlankhourStore.finishIfDue(state);
   if (finished) {
-    await Momentum.save(state);
+    await BlankhourStore.save(state);
     if (chrome.notifications && previousStatus === 'running') {
       const t=state.timer;
       const message=t.status==='completed' ? (t.mode==='focus'?'Focus session completed. Your focused time has been saved.':'Your break is complete.')
         : previousPhase==='focus' && t.phase==='auto-break'?'Time for a short break. Your focus clock is paused.'
         : previousPhase==='auto-break' && t.phase==='focus'?'Short break complete. Your focus clock is running again.':null;
       if(message)await chrome.notifications.create({
-        type:'basic',iconUrl:'icons/icon128.png',title:'Zenith',message
+        type:'basic',iconUrl:'icons/icon128.png',title:'blankhour.',message
       }).catch(()=>{});
     }
   }
@@ -127,16 +127,16 @@ async function ensureTimerAndRules() {
 function scheduleSync() {
   // Do not swallow errors before returning a result to the UI.
   const job = syncQueue.then(ensureTimerAndRules);
-  syncQueue = job.catch(error => console.error('Zenith background sync failed:',error));
+  syncQueue = job.catch(error => console.error('blankhour background sync failed:',error));
   return job;
 }
 chrome.runtime.onInstalled.addListener(() => {scheduleSync().catch(() => {});});
 chrome.runtime.onStartup.addListener(() => {scheduleSync().catch(() => {});});
 chrome.alarms.onAlarm.addListener(alarm => {if(alarm.name===ALARM)scheduleSync().catch(() => {});});
 chrome.storage.onChanged.addListener((changes,area) => {
-  if (area === 'local' && changes[Momentum.KEY]) {
-    const old = changes[Momentum.KEY].oldValue;
-    const now = changes[Momentum.KEY].newValue;
+  if (area === 'local' && changes[BlankhourStore.KEY]) {
+    const old = changes[BlankhourStore.KEY].oldValue;
+    const now = changes[BlankhourStore.KEY].newValue;
     if (!old || old.settings?.focusModeEnabled !== now?.settings?.focusModeEnabled ||
         JSON.stringify(old.settings?.blockedSites) !== JSON.stringify(now?.settings?.blockedSites) ||
         JSON.stringify(old.timer) !== JSON.stringify(now?.timer)) scheduleSync().catch(() => {});
@@ -154,17 +154,17 @@ function recordAttempt(domain, tabId, url) {
   if (recentAttempts.size > 200) for (const [k,t] of recentAttempts) if (t < now-10000) recentAttempts.delete(k);
   blockedContexts.set(tabId,{domain,at:now});
   attemptsQueue = attemptsQueue.then(async () => {
-    const key=Momentum.TRACK_KEY;
+    const key=BlankhourStore.TRACK_KEY;
     const existing=(await chrome.storage.local.get(key))[key]||[];
     const kept=existing.filter(a => a && Number.isFinite(a.ts) && a.ts>now-90*86400000).slice(-2499);
     kept.push({domain,ts:now});
     await chrome.storage.local.set({[key]:kept});
-  }).catch(err => console.warn('Zenith attempts logging failed',err));
+  }).catch(err => console.warn('blankhour attempts logging failed',err));
 }
 chrome.webNavigation.onBeforeNavigate.addListener(details => {
   if (details.frameId!==0 || details.tabId<0) return;
   // The navigation observer is deliberately not used to enforce blocking.
-  Momentum.load().then(state => {
+  BlankhourStore.load().then(state => {
     if (!state.settings.focusModeEnabled) return;
     const domains=normalizeDomains(state.settings.blockedSites);
     try {
@@ -176,11 +176,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(details => {
   }).catch(()=>{});
 });
 chrome.runtime.onMessage.addListener((message,sender,reply) => {
-  if(message?.type==='OPEN_ZENITH_VIEW'){
+  if(message?.type==='OPEN_BLANKHOUR_VIEW'){
     openWorkspaceView(message.view).then(reply).catch(error=>reply({ok:false,error:error?.message||String(error)}));
     return true;
   }
-  if(message?.type==='CLAIM_ZENITH_VIEW'){
+  if(message?.type==='CLAIM_BLANKHOUR_VIEW'){
     claimWorkspaceView(sender.tab?.id).then(view=>reply({view})).catch(()=>reply({view:null}));
     return true;
   }
