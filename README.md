@@ -77,6 +77,3 @@ This version uses **HTML, CSS and vanilla JavaScript** with **Chrome Extension M
 
 For now, the goal is to stabilise the beta and improve it through community feedback.
 
-## Licence
-
-A licence has not been selected yet. Please ask the maintainer before reusing or redistributing the source outside this repository.
